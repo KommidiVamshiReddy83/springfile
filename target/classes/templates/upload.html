@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Upload PDF / Excel</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .card { max-width: 720px; margin: auto; border: 1px solid #ddd; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+        .row { display: flex; gap: 12px; align-items: center; }
+        .row > * { flex: 1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+        th, td { border: 1px solid #e5e5e5; padding: 8px; text-align: left; }
+        th { background: #fafafa; }
+        .success { color: #0b6; margin-bottom: 12px; }
+        .error { color: #d00; margin-bottom: 12px; }
+        .muted { color: #666; font-size: 12px; }
+        .btn { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+        input[type="file"] { padding: 8px; border: 1px dashed #aaa; border-radius: 8px; }
+        form { margin-bottom: 18px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>Upload PDF / Excel</h2>
+    <p class="muted">Allowed: <strong>.pdf, .xls, .xlsx</strong> (20 MB max)</p>
+
+    <div th:if="${success}" class="success" th:text="${success}"></div>
+    <div th:if="${error}" class="error" th:text="${error}"></div>
+
+    <form id="uploadForm" method="post" action="/upload" enctype="multipart/form-data">
+        <div class="row">
+            <input id="fileInput" type="file" name="file" accept=".pdf,.xls,.xlsx" required />
+            <button class="btn btn-primary" type="submit">Upload</button>
+        </div>
+    </form>
+
+    <form method="post" action="/relocate" onsubmit="return checkRelocate()">
+        <div class="row">
+            <input type="text" name="id" placeholder="File ID (from table below)" required />
+            <input type="text" name="newDirectory" placeholder="New directory path (will be created if missing)" required />
+            <button class="btn btn-secondary" type="submit">Relocate & Update Path</button>
+        </div>
+    </form>
+
+    <h3>Uploaded Files</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Original Name</th>
+            <th>Type</th>
+            <th>Size (bytes)</th>
+            <th>Storage Path</th>
+            <th>Uploaded</th>
+            <th>Updated</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="f : ${files}">
+            <td th:text="${f.id}"></td>
+            <td th:text="${f.originalFilename}"></td>
+            <td th:text="${f.contentType}"></td>
+            <td th:text="${f.size}"></td>
+            <td th:text="${f.storagePath}"></td>
+            <td th:text="${#temporals.format(f.uploadedAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+            <td th:text="${#temporals.format(f.updatedAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function checkRelocate() { return true; }
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const allowed = ['application/pdf',
+                         'application/vnd.ms-excel',
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+        const name = file.name.toLowerCase();
+        const extOk = name.endsWith('.pdf') || name.endsWith('.xls') || name.endsWith('.xlsx');
+        if (!extOk) {
+            e.preventDefault();
+            alert('Only PDF, XLS, XLSX allowed.');
+            return false;
+        }
+        // MIME type can be unreliable across OS, but we still check best-effort
+        if (file.type && allowed.indexOf(file.type) === -1 && !name.endsWith('.pdf')) {
+            // We allow Excel when browser reports generic or empty types too.
+        }
+        return true;
+    });
+</script>
+</body>
+</html>
